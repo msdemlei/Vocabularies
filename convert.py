@@ -59,10 +59,10 @@ KNOWN_PREDICATES = frozenset([
     "skos:altLabel"])
 
 # an RE our term URIs must match (we're not very diligent yet)
-FULL_TERM_PATTERN = "[\w\d#:/_.*%-]+"
+FULL_TERM_PATTERN = r"[\w\d#:/_.*%-]+"
 
 # an RE our terms themselves must match
-TERM_PATTERN = "[\w\d_-]+"
+TERM_PATTERN = r"[\w\d_-]+"
 
 IVOA_RDF_URI = "http://www.ivoa.net/rdf/"
 
@@ -80,18 +80,22 @@ RewriteRule ^{path}/?$ {path}/{timestamp}/{name}.desise [R=303]
 RewriteRule ^{path}/?$ {path}/{timestamp}/{name}.html [R=303]
 """
 
+NAMESPACES = {"dc": "http://purl.org/dc/terms/",
+              "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+              "owl": "http://www.w3.org/2002/07/owl#",
+              "xsd": "http://www.w3.org/2001/XMLSchema#",
+              "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+              "foaf": "http://xmlns.com/foaf/0.1/",
+              "ivoasem": "http://www.ivoa.net/rdf/ivoasem#",
+              "skos": "http://www.w3.org/2004/02/skos/core#"}
 
 TTL_HEADER_TEMPLATE = """@base {baseuri}.
 @prefix : <#>.
 
-@prefix dc: <http://purl.org/dc/terms/> .
-@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix owl: <http://www.w3.org/2002/07/owl#> .
-@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-@prefix foaf: <http://xmlns.com/foaf/0.1/>.
-@prefix ivoasem: <http://www.ivoa.net/rdf/ivoasem#>.
-@prefix skos: <http://www.w3.org/2004/02/skos/core#>.
+""" + \
+'\n'.join([f"@prefix {prefix}: <{namespace}> ."
+           for prefix, namespace in NAMESPACES.items()]) + \
+"""
 
 <> a owl:Ontology;
     dc:created {timestamp};
@@ -916,6 +920,19 @@ class Vocabulary(object):
                 f.write(term.as_ttl())
                 f.write("\n\n")
 
+    def write_jsonld(self):
+        """writes a json-ld representation of the current vocabulary
+        to current directory as <name>.
+
+        rdflib's JSON-LD serializer does not support base URI.
+        """
+        triples = rdflib.Graph()
+        with open(self.name+".ttl", "r", encoding="utf-8") as f:
+            triples.parse(file=f, format="turtle")
+        with open(self.name+".json", "wb") as f:
+            triples.serialize(f, "json-ld",
+                              context=NAMESPACES)
+
     def write_rdfx(self):
         """writes an RDF/X representation of the current vocabulary
         to current directory as <name>.rdf
@@ -1052,6 +1069,7 @@ class Vocabulary(object):
                 clear_first=True):
             self.write_turtle()
             self.write_html()
+            self.write_jsonld()
             self.write_rdfx()
             self.write_desise()
 
