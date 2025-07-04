@@ -1016,6 +1016,8 @@ class Vocabulary(object):
                     ", ",
                     T.a(href=self.name+".ttl")["Turtle"],
                     ", ",
+                    T.a(href=self.name+".json")["JSON-LD"],
+                    ", ",
                     T.a(href=self.name+".desise")["desise"],
                     " (non-RDF json)."],
                 license_element
